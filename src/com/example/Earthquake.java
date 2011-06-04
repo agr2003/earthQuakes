@@ -1,11 +1,19 @@
 package com.example;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.location.Location;
 import android.os.Bundle;
 import android.text.AndroidCharacter;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.TextView;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -30,9 +38,13 @@ public class Earthquake extends Activity{
 
     private ListView earthquakeListView;
     private ArrayAdapter<Quake> arrayAdapter;
+    private Quake selectedQuake;
+
 
     private ArrayList<Quake> earthquakes = new ArrayList<Quake>();
 
+    private static final int MENU_UPDATE = Menu.FIRST;
+    private static final int QUAKE_DIALOG = 1;
 
     @Override
     public void onCreate(Bundle savedInstanceState){
@@ -41,11 +53,78 @@ public class Earthquake extends Activity{
 
         earthquakeListView = (ListView)this.findViewById( R.id.earthquakeListView );
 
+        earthquakeListView.setOnItemClickListener( new AdapterView.OnItemClickListener(){
+            public void onItemClick( AdapterView<?> adapterView, View view, int i, long l ) {
+                selectedQuake = earthquakes.get( i );
+                showDialog(QUAKE_DIALOG);
+
+            }
+        });
+
         int layoutId = android.R.layout.simple_list_item_1;
         arrayAdapter = new ArrayAdapter<Quake>( this, layoutId, earthquakes );
         earthquakeListView.setAdapter( arrayAdapter );
 
         refreshEarthquakes();
+    }
+
+    @Override
+    public Dialog onCreateDialog( int id ){
+        switch( id ){
+            case ( QUAKE_DIALOG ) : {
+                LayoutInflater layoutInflater = LayoutInflater.from( this );
+                View quakeDetailsView = layoutInflater.inflate( R.layout.quake_details, null );
+
+                AlertDialog.Builder quakeDetailsDialog = new AlertDialog.Builder( this );
+                quakeDetailsDialog.setTitle("Quake time");
+                quakeDetailsDialog.setView( quakeDetailsView );
+                return quakeDetailsDialog.create();
+            }
+        }
+        return null;
+    }
+
+   @Override
+   public void onPrepareDialog( int id, Dialog dialog ){
+       switch ( id ){
+           case ( QUAKE_DIALOG ) : {
+               SimpleDateFormat sdf = new SimpleDateFormat( "dd/MM/yyyy HH:mm:ss");
+               String dateString = sdf.format( selectedQuake.getDate() );
+               String quakeText = String.format( "Magnitude %s \n %s \n %s", selectedQuake.getMagnitude(),
+                                  selectedQuake.getDetails(), selectedQuake.getLink() );
+
+               AlertDialog quakeDialog = (AlertDialog)dialog;
+               quakeDialog.setTitle( dateString );
+               TextView textView = (TextView)quakeDialog.findViewById( R.id.quakeDetailsTextView );
+               textView.setText( quakeText );
+
+               break;
+           }
+       }
+   }
+
+
+    @Override
+    public boolean onCreateOptionsMenu( Menu menu ){
+        super.onCreateOptionsMenu( menu );
+
+        menu.add( 0, MENU_UPDATE, Menu.NONE, R.string.menu_update );
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected( MenuItem menuItem ){
+        super.onOptionsItemSelected( menuItem );
+
+        switch ( menuItem.getItemId() ){
+            case ( MENU_UPDATE ) : {
+                refreshEarthquakes();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void refreshEarthquakes() {
