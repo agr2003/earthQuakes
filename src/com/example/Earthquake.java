@@ -3,8 +3,13 @@ package com.example;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.res.Resources;
 import android.location.Location;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.text.AndroidCharacter;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -44,10 +49,17 @@ public class Earthquake extends Activity{
     private ArrayList<Quake> earthquakes = new ArrayList<Quake>();
 
     private static final int MENU_UPDATE = Menu.FIRST;
+    private static final int MENU_PREFERENCES = MENU_UPDATE + 1;
+
     private static final int QUAKE_DIALOG = 1;
+    private static final int SHOW_PREFERENCES = 1;
+
+    int minimumMagnitude = 0;
+    boolean autoUpdate = false;
+    int updateFreq = 0;
 
     @Override
-    public void onCreate(Bundle savedInstanceState){
+    public void onCreate( Bundle savedInstanceState ){
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
@@ -56,7 +68,7 @@ public class Earthquake extends Activity{
         earthquakeListView.setOnItemClickListener( new AdapterView.OnItemClickListener(){
             public void onItemClick( AdapterView<?> adapterView, View view, int i, long l ) {
                 selectedQuake = earthquakes.get( i );
-                showDialog(QUAKE_DIALOG);
+                showDialog( QUAKE_DIALOG );
 
             }
         });
@@ -65,6 +77,7 @@ public class Earthquake extends Activity{
         arrayAdapter = new ArrayAdapter<Quake>( this, layoutId, earthquakes );
         earthquakeListView.setAdapter( arrayAdapter );
 
+        updateFromPreferences();
         refreshEarthquakes();
     }
 
@@ -109,6 +122,7 @@ public class Earthquake extends Activity{
         super.onCreateOptionsMenu( menu );
 
         menu.add( 0, MENU_UPDATE, Menu.NONE, R.string.menu_update );
+        menu.add( 0, MENU_PREFERENCES, Menu.NONE, R.string.menu_preferences );
 
         return true;
     }
@@ -120,6 +134,11 @@ public class Earthquake extends Activity{
         switch ( menuItem.getItemId() ){
             case ( MENU_UPDATE ) : {
                 refreshEarthquakes();
+                return true;
+            }
+            case ( MENU_PREFERENCES ) : {
+                Intent preferencesIntent = new Intent( this, Preferences.class );
+                startActivityForResult( preferencesIntent, SHOW_PREFERENCES );
                 return true;
             }
         }
@@ -209,7 +228,46 @@ public class Earthquake extends Activity{
 	}
 
     private void addNewQuake( Quake quake ) {
-        earthquakes.add( quake );
-        arrayAdapter.notifyDataSetChanged();
+        if( quake.getMagnitude() > minimumMagnitude ){
+            earthquakes.add( quake );
+            arrayAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void updateFromPreferences(){
+        Context context = getApplicationContext();
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences( context );
+
+        int minMagnitudeIndex = preferences.getInt( Preferences.PREF_MIN_MAG, 0 );
+        if( minMagnitudeIndex < 0 ){
+            minMagnitudeIndex = 0;
+        }
+
+        int freqIndex = preferences.getInt( Preferences.PREF_UPDATE_MAG, 0 );
+        if( freqIndex < 0 ){
+            freqIndex = 0;
+        }
+
+        autoUpdate = preferences.getBoolean( Preferences.PREF_AUTO_UPDATE, false );
+
+        Resources resources = getResources();
+        int[] minMagnitudeValues = resources.getIntArray( R.array.magnitude_values );
+        int[] freqValues = resources.getIntArray( R.array.update_freq_values );
+
+        minimumMagnitude = minMagnitudeValues[minMagnitudeIndex];
+        updateFreq = freqValues[freqIndex];
+
+    }
+
+    @Override
+    public void onActivityResult( int requestCode, int resultCode, Intent data ){
+        super.onActivityResult( requestCode, resultCode, data );
+
+        if( requestCode == SHOW_PREFERENCES ){
+            if( resultCode == Activity.RESULT_OK ){
+                updateFromPreferences();
+                refreshEarthquakes();
+            }
+        }
     }
 }
