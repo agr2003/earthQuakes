@@ -38,7 +38,7 @@ public class Preferences extends Activity {
         updateFreqSpinner = (Spinner)findViewById( R.id.spinner_update_freq );
         magnitudeSpinner = (Spinner)findViewById( R.id.spinner_quake_mag );
         autoUpdate = (CheckBox)findViewById( R.id.checkbox_auto_update );
-
+        //test
         populateSpinners();
 
         Context context = getApplicationContext();
